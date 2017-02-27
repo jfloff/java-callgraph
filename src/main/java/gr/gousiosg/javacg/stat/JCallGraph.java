@@ -39,42 +39,43 @@ import org.apache.bcel.classfile.ClassParser;
 /**
  * Constructs a callgraph out of a JAR archive. Can combine multiple archives
  * into a single call graph.
- * 
+ *
  * @author Georgios Gousios <gousiosg@gmail.com>
- * 
+ *
  */
 public class JCallGraph {
 
-    public static void main(String[] args) {
-        ClassParser cp;
-        try {
-            for (String arg : args) {
+  public static void main(String[] args) {
+    ClassParser cp;
+    try {
+      for (String arg : args) {
+        File f = new File(arg);
 
-                File f = new File(arg);
-                
-                if (!f.exists()) {
-                    System.err.println("Jar file " + arg + " does not exist");
-                }
-                
-                JarFile jar = new JarFile(f);
-
-                Enumeration<JarEntry> entries = jar.entries();
-                while (entries.hasMoreElements()) {
-                    JarEntry entry = entries.nextElement();
-                    if (entry.isDirectory())
-                        continue;
-
-                    if (!entry.getName().endsWith(".class"))
-                        continue;
-
-                    cp = new ClassParser(arg,entry.getName());
-                    ClassVisitor visitor = new ClassVisitor(cp.parse());
-                    visitor.start();
-                }
-            }
-        } catch (IOException e) {
-            System.err.println("Error while processing jar: " + e.getMessage());
-            e.printStackTrace();
+        if (!f.exists()) {
+          System.err.println("Jar file " + arg + " does not exist");
         }
+
+        JarFile jar = new JarFile(f);
+
+        Enumeration<JarEntry> entries = jar.entries();
+        while (entries.hasMoreElements()) {
+          JarEntry entry = entries.nextElement();
+          if (entry.isDirectory()){
+            continue;
+          }
+
+          if (!entry.getName().endsWith(".class")){
+            continue;
+          }
+
+          cp = new ClassParser(arg,entry.getName());
+          ClassVisitor visitor = new ClassVisitor(cp.parse());
+          visitor.start();
+        }
+      }
+    } catch (IOException e) {
+      System.err.println("Error while processing jar: " + e.getMessage());
+      e.printStackTrace();
     }
+  }
 }
