@@ -35,6 +35,12 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import org.apache.bcel.classfile.ClassParser;
+import java.util.HashMap;
+import org.jgrapht.*;
+import org.jgrapht.graph.*;
+import java.util.HashSet;
+import java.util.Queue;
+import java.util.LinkedList;
 
 /**
  * Constructs a callgraph out of a JAR archive. Can combine multiple archives
@@ -45,10 +51,40 @@ import org.apache.bcel.classfile.ClassParser;
  */
 public class JCallGraph {
 
+  private static HashMap<String,ClassVisitor> classes = new HashMap<>();
+  public static DirectedGraph<String, DefaultEdge> graph = new DefaultDirectedGraph<>(DefaultEdge.class);
+
+  public static ClassVisitor getClassVisitor(String className, String path) {
+    // not found visit
+    if (!classes.containsKey(path+className)){
+      visitClass(className, path);
+    }
+    return classes.get(path+className);
+  }
+
+  private static void visitClass(String name, String arg) {
+    if (!name.endsWith(".class")){
+      return;
+    }
+    if (classes.containsKey(name)){
+      return;
+    }
+
+    try {
+      ClassParser cp = new ClassParser(arg, name);
+      ClassVisitor visitor = new ClassVisitor(cp.parse(), arg);
+      classes.put(arg+visitor.getClassName(), visitor);
+      visitor.start();
+    } catch (IOException e) {
+      System.err.println("Error while processing jar: " + e.getMessage());
+      e.printStackTrace();
+    }
+  }
+
   public static void main(String[] args) {
-    ClassParser cp;
     try {
       for (String arg : args) {
+        arg += '/';
         File f = new File(arg);
 
         if (!f.exists()) {
@@ -64,18 +100,28 @@ public class JCallGraph {
             continue;
           }
 
-          if (!entry.getName().endsWith(".class")){
-            continue;
-          }
-
-          cp = new ClassParser(arg,entry.getName());
-          ClassVisitor visitor = new ClassVisitor(cp.parse());
-          visitor.start();
+          visitClass(entry.getName(), arg);
         }
       }
     } catch (IOException e) {
       System.err.println("Error while processing jar: " + e.getMessage());
       e.printStackTrace();
+    }
+
+    HashSet<String> visited = new HashSet<>();
+    Queue<String> targets = new LinkedList<String>();
+    targets.add("io.grpc.MethodDescriptor$Marshaller:stream");
+
+    while (!targets.isEmpty()) {
+      String v = targets.remove();
+      // skips already visited nodes to avoid infinite loops
+      if(!visited.contains(v)){
+        visited.add(v);
+        for(DefaultEdge e : graph.incomingEdgesOf(v)){
+          targets.add(graph.getEdgeSource(e));
+          System.out.println(graph.getEdgeSource(e) + " --> " + graph.getEdgeTarget(e));
+        }
+      }
     }
   }
 }

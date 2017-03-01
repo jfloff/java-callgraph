@@ -35,6 +35,9 @@ import org.apache.bcel.classfile.JavaClass;
 import org.apache.bcel.classfile.Method;
 import org.apache.bcel.generic.ConstantPoolGen;
 import org.apache.bcel.generic.MethodGen;
+import java.util.HashMap;
+import java.util.HashSet;
+
 
 /**
  * The simplest of class visitors, invokes the method visitor class for each
@@ -42,14 +45,27 @@ import org.apache.bcel.generic.MethodGen;
  */
 public class ClassVisitor extends EmptyVisitor {
 
+  private String jarpath;
   private JavaClass clazz;
   private ConstantPoolGen constants;
   private String classReferenceFormat;
+  private HashMap<String, MethodVisitor> methods = new HashMap<>();
+  private HashMap<String, MethodVisitor> parentMethods = new HashMap<>();
+  private HashSet<ClassVisitor> parents = new HashSet<>();
 
-  public ClassVisitor(JavaClass jc) {
+  public ClassVisitor(JavaClass jc, String arg) {
+    jarpath = arg;
     clazz = jc;
     constants = new ConstantPoolGen(clazz.getConstantPool());
     classReferenceFormat = "C:" + clazz.getClassName() + " %s";
+  }
+
+  public String getClassName() {
+    return clazz.getClassName();
+  }
+
+  public JavaClass getClazz() {
+    return clazz;
   }
 
   public void visitJavaClass(JavaClass jc) {
@@ -69,18 +85,58 @@ public class ClassVisitor extends EmptyVisitor {
 
       if (constant.getTag() == 7) {
         String referencedClass = constantPool.constantToString(constant);
-        System.out.println(String.format(classReferenceFormat, referencedClass));
+        // System.out.println(String.format(classReferenceFormat, referencedClass));
       }
     }
   }
 
+  private MethodVisitor getParentMethod(String name) {
+    MethodVisitor mv = null;
+    for (ClassVisitor cv : parents){
+      if(cv.methods.containsKey(name)){
+        mv = cv.getParentMethod(name);
+        if (mv == null) {
+          mv = cv.methods.get(name);
+        }
+      }
+    }
+    return mv;
+  }
+
+  public boolean hasParent(String methodName) {
+    return parentMethods.containsKey(methodName);
+  }
+
+  public MethodVisitor getParent(String methodName) {
+    return parentMethods.get(methodName);
+  }
+
   public void visitMethod(Method method) {
     MethodGen mg = new MethodGen(method, clazz.getClassName(), constants);
-    MethodVisitor visitor = new MethodVisitor(mg, clazz);
+    MethodVisitor visitor = new MethodVisitor(mg, this);
+    String methodName = visitor.getSignature();
+    MethodVisitor parent = getParentMethod(methodName);
+    if (parent != null) {
+      parentMethods.put(methodName, parent);
+    }
+    methods.put(methodName, visitor);
     visitor.start();
   }
 
   public void start() {
+    for (String iname : clazz.getInterfaceNames()) {
+      ClassVisitor cv = JCallGraph.getClassVisitor(iname, jarpath);
+      if (cv != null) {
+        parents.add(cv);
+      }
+    }
+    String sname = clazz.getSuperclassName();
+    if(sname != null && !sname.isEmpty()) {
+      ClassVisitor cv = JCallGraph.getClassVisitor(sname, jarpath);
+      if (cv != null) {
+        parents.add(cv);
+      }
+    }
     visitJavaClass(clazz);
   }
 }

@@ -41,6 +41,9 @@ import org.apache.bcel.generic.InstructionConstants;
 import org.apache.bcel.generic.InstructionHandle;
 import org.apache.bcel.generic.MethodGen;
 import org.apache.bcel.generic.ReturnInstruction;
+import org.jgrapht.*;
+import org.jgrapht.graph.*;
+import org.apache.bcel.generic.InvokeInstruction;
 
 /**
  * The simplest of method visitors, prints any invoked method
@@ -50,19 +53,58 @@ import org.apache.bcel.generic.ReturnInstruction;
  */
 public class MethodVisitor extends EmptyVisitor {
 
-  JavaClass visitedClass;
+  private ClassVisitor visited;
+  private JavaClass visitedClass;
   private MethodGen mg;
+  private MethodGen parentmg;
   private ConstantPoolGen cp;
   private String format;
+  private String signature;
+  private MethodVisitor parent;
+  private String vertex;
 
-  public MethodVisitor(MethodGen m, JavaClass jc) {
-    visitedClass = jc;
+  public MethodVisitor(MethodGen m, ClassVisitor v) {
+    visited = v;
+    visitedClass = v.getClazz();
     mg = m;
+    signature = buildSignature(m.toString());
     cp = mg.getConstantPool();
+    vertex = visitedClass.getClassName() + ":" + mg.getName();
     format = "M:" + visitedClass.getClassName() + ":" + mg.getName() + " " + "(%s)%s:%s";
   }
 
+  private String buildSignature(String orig) {
+    String[] nameParts = orig.split(" ");
+    for (int i=0; i < nameParts.length; i++){
+      if (nameParts[i].equals("abstract")){
+        nameParts[i] = "";
+      }
+      if (nameParts[i].contains(",")) {
+        nameParts[i] = "";
+        nameParts[i-1] += ",";
+      }
+      if (nameParts[i].contains(")") && !nameParts[i].contains("(")) {
+        nameParts[i] = "";
+        nameParts[i-1] += ")";
+      }
+    }
+    return Utils.strJoin(nameParts, " ");
+  }
+
+  public String getSignature() {
+    return signature;
+  }
+
   public void start() {
+    if (visited.hasParent(signature)){
+      parent = visited.getParent(signature);
+      format = "M:" + parent.visitedClass.getClassName() + ":" + parent.mg.getName() + " " + "(%s)%s:%s";
+      vertex = parent.visitedClass.getClassName() + ":" + parent.mg.getName();
+    }
+
+    // add to graph first one
+    JCallGraph.graph.addVertex(vertex);
+
     if (mg.isAbstract() || mg.isNative())
         return;
     for (InstructionHandle ih = mg.getInstructionList().getStart();
@@ -83,23 +125,34 @@ public class MethodVisitor extends EmptyVisitor {
             && !(i instanceof ReturnInstruction));
   }
 
+  private void addCall(InvokeInstruction i) {
+    // add the vertices
+    String targetVertex = i.getReferenceType(cp) + ":" + i.getMethodName(cp);
+    JCallGraph.graph.addVertex(targetVertex);
+    JCallGraph.graph.addEdge(vertex, targetVertex);
+  }
+
   @Override
   public void visitINVOKEVIRTUAL(INVOKEVIRTUAL i) {
-    System.out.println(String.format(format,"M",i.getReferenceType(cp),i.getMethodName(cp)));
+    addCall(i);
+    // System.out.println(String.format(format,"M",i.getReferenceType(cp),i.getMethodName(cp)));
   }
 
   @Override
   public void visitINVOKEINTERFACE(INVOKEINTERFACE i) {
-    System.out.println(String.format(format,"I",i.getReferenceType(cp),i.getMethodName(cp)));
+    addCall(i);
+    // System.out.println(String.format(format,"I",i.getReferenceType(cp),i.getMethodName(cp)));
   }
 
   @Override
   public void visitINVOKESPECIAL(INVOKESPECIAL i) {
-    System.out.println(String.format(format,"O",i.getReferenceType(cp),i.getMethodName(cp)));
+    addCall(i);
+    // System.out.println(String.format(format,"O",i.getReferenceType(cp),i.getMethodName(cp)));
   }
 
   @Override
   public void visitINVOKESTATIC(INVOKESTATIC i) {
-    System.out.println(String.format(format,"S",i.getReferenceType(cp),i.getMethodName(cp)));
+    addCall(i);
+    // System.out.println(String.format(format,"S",i.getReferenceType(cp),i.getMethodName(cp)));
   }
 }
