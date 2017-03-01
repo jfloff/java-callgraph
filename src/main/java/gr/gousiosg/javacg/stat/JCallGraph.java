@@ -39,6 +39,7 @@ import java.util.HashMap;
 import org.jgrapht.*;
 import org.jgrapht.graph.*;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.Queue;
 import java.util.LinkedList;
 
@@ -54,7 +55,7 @@ public class JCallGraph {
   private static HashMap<String,ClassVisitor> classes = new HashMap<>();
   public static DirectedGraph<String, DefaultEdge> graph = new DefaultDirectedGraph<>(DefaultEdge.class);
 
-  public static ClassVisitor getClassVisitor(String className, String path) {
+  protected static ClassVisitor getClassVisitor(String className, String path) {
     // not found visit
     if (!classes.containsKey(path+className)){
       visitClass(className, path);
@@ -62,7 +63,7 @@ public class JCallGraph {
     return classes.get(path+className);
   }
 
-  private static void visitClass(String name, String arg) {
+  protected static void visitClass(String name, String arg) {
     if (!name.endsWith(".class")){
       return;
     }
@@ -108,10 +109,15 @@ public class JCallGraph {
       e.printStackTrace();
     }
 
+    for(String source : sourcesFrom("io.grpc.MethodDescriptor$Marshaller:stream")){
+      System.out.println(source);
+    }
+  }
+
+  public static Set<String> sourcesFrom(String target){
     HashSet<String> visited = new HashSet<>();
     Queue<String> targets = new LinkedList<String>();
-    targets.add("io.grpc.MethodDescriptor$Marshaller:stream");
-
+    targets.add(target);
     while (!targets.isEmpty()) {
       String v = targets.remove();
       // skips already visited nodes to avoid infinite loops
@@ -119,9 +125,10 @@ public class JCallGraph {
         visited.add(v);
         for(DefaultEdge e : graph.incomingEdgesOf(v)){
           targets.add(graph.getEdgeSource(e));
-          System.out.println(graph.getEdgeSource(e) + " --> " + graph.getEdgeTarget(e));
+          // System.out.println(graph.getEdgeSource(e) + " --> " + graph.getEdgeTarget(e));
         }
       }
     }
+    return visited;
   }
 }

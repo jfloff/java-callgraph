@@ -3,7 +3,7 @@ package gr.gousiosg.javacg.stat;
 import java.lang.StringBuilder;
 
 
-public class Utils {
+class Utils {
 
   public static String strJoin(String[] aArr, String sSep) {
     StringBuilder sbStr = new StringBuilder();

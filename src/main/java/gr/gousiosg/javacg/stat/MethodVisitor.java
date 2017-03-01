@@ -51,7 +51,7 @@ import org.apache.bcel.generic.InvokeInstruction;
  *
  * Class copied with modifications from CJKM: http://www.spinellis.gr/sw/ckjm/
  */
-public class MethodVisitor extends EmptyVisitor {
+class MethodVisitor extends EmptyVisitor {
 
   private ClassVisitor visited;
   private JavaClass visitedClass;

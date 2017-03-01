@@ -43,7 +43,7 @@ import java.util.HashSet;
  * The simplest of class visitors, invokes the method visitor class for each
  * method found.
  */
-public class ClassVisitor extends EmptyVisitor {
+class ClassVisitor extends EmptyVisitor {
 
   private String jarpath;
   private JavaClass clazz;
