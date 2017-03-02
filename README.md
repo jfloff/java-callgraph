@@ -10,6 +10,11 @@ A suite of programs for generating static and dynamic call graphs in Java.
   At JVM exit, prints a table of caller-callee relationships, along with a number
   of calls
 
+### Know method callers
+(@jfloff) An API was added so we can know which methods are within the call graph of a specific method. For example: if `A()` calls `B()` which calls `C()`, calling `callers("C()")` would return `"A()  B()"`.
+
+Since at bytecode level we can't know which methods were overridden (from superclasses or interfaces), this is done using simple string matching on method full signature, i.e., including method visibility, name, parameter types, exceptions thrown. _PRs are welcome to improve this_
+
 ## Compile
 
 The java-callgraph package is build with maven. Install maven and do:

@@ -108,13 +108,9 @@ public class JCallGraph {
       System.err.println("Error while processing jar: " + e.getMessage());
       e.printStackTrace();
     }
-
-    for(String source : sourcesFrom("io.grpc.MethodDescriptor$Marshaller:stream")){
-      System.out.println(source);
-    }
   }
 
-  public static Set<String> sourcesFrom(String target){
+  public static Set<String> callers(String target){
     HashSet<String> visited = new HashSet<>();
     Queue<String> targets = new LinkedList<String>();
     targets.add(target);
